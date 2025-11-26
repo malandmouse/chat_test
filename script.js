@@ -7,6 +7,7 @@ const submitBtn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
 const btnLoading = document.getElementById('btnLoading');
 const resultDiv = document.getElementById('result');
+const copyBtn = document.getElementById('copyBtn');
 const errorModal = document.getElementById('errorModal');
 const errorMessage = document.getElementById('errorMessage');
 const closeModal = document.querySelector('.close');
@@ -166,6 +167,7 @@ submitBtn.addEventListener('click', async () => {
             resultDiv.innerHTML = '';
             resultDiv.textContent = text;
             resultDiv.classList.add('has-content');
+            copyBtn.style.display = 'inline-block';
         } else {
             throw new Error('응답을 받지 못했습니다.');
         }
@@ -179,6 +181,7 @@ submitBtn.addEventListener('click', async () => {
         }
 
         resultDiv.innerHTML = '<p class="placeholder">오류가 발생했습니다.</p>';
+        copyBtn.style.display = 'none';
     } finally {
         // UI 상태 복구
         submitBtn.disabled = false;
@@ -192,6 +195,27 @@ promptInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         submitBtn.click();
+    }
+});
+
+// 복사하기 버튼
+copyBtn.addEventListener('click', async () => {
+    const text = resultDiv.textContent;
+
+    try {
+        await navigator.clipboard.writeText(text);
+
+        // 버튼 텍스트 임시 변경
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = '✅ 복사됨!';
+        copyBtn.style.background = '#047857';
+
+        setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.style.background = '#10b981';
+        }, 2000);
+    } catch (error) {
+        showError('복사에 실패했습니다: ' + error.message);
     }
 });
 

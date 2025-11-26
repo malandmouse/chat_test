@@ -33,6 +33,17 @@ h2 {
     font-size: 1.5em;
 }
 
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.result-header h2 {
+    margin-bottom: 0;
+}
+
 .config-section, .prompt-section, .result-section {
     margin-bottom: 30px;
 }
@@ -97,6 +108,23 @@ textarea {
 .btn-primary:disabled {
     background: #ccc;
     cursor: not-allowed;
+}
+
+.btn-copy {
+    background: #10b981;
+    color: white;
+    font-size: 14px;
+    padding: 8px 16px;
+}
+
+.btn-copy:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-copy:active {
+    background: #047857;
 }
 
 .btn-large {
