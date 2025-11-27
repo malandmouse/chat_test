@@ -22,10 +22,16 @@ const removeMarkdownCheckbox = document.getElementById('removeMarkdown');
 const extractCodeBlocksCheckbox = document.getElementById('extractCodeBlocks');
 const removeExtraSpacesCheckbox = document.getElementById('removeExtraSpaces');
 
+// 템플릿 변수 요소들
+const variablesSection = document.getElementById('variablesSection');
+const variableInputsContainer = document.getElementById('variableInputs');
+const variableCount = document.getElementById('variableCount');
+
 // 상태 관리
 let apiKey = localStorage.getItem('geminiApiKey') || '';
 let selectedModel = localStorage.getItem('selectedModel') || '';
 let originalResultText = ''; // 원본 결과 저장
+let templateVariables = {}; // 템플릿 변수 값 저장
 
 // Gemini API 사용 가능한 모델 목록
 const availableModels = [
@@ -171,6 +177,77 @@ function updateResult() {
     resultDiv.classList.add('has-content');
 }
 
+// 템플릿 변수 추출 함수
+function extractTemplateVariables(text) {
+    const regex = /\$\{(\w+)\}/g;
+    const variables = new Set();
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+        variables.add(match[1]);
+    }
+
+    return Array.from(variables);
+}
+
+// 템플릿 변수 입력 필드 생성
+function updateVariableInputs() {
+    const promptText = systemPrompt.value;
+    const variables = extractTemplateVariables(promptText);
+
+    if (variables.length === 0) {
+        variablesSection.style.display = 'none';
+        return;
+    }
+
+    // 섹션 표시
+    variablesSection.style.display = 'block';
+    variableCount.textContent = `${variables.length}개`;
+
+    // 기존 입력 필드 저장
+    const currentValues = { ...templateVariables };
+
+    // 입력 필드 생성
+    variableInputsContainer.innerHTML = '';
+    variables.forEach(varName => {
+        const group = document.createElement('div');
+        group.className = 'variable-input-group';
+
+        const label = document.createElement('label');
+        label.textContent = `${varName}:`;
+        label.setAttribute('for', `var-${varName}`);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `var-${varName}`;
+        input.placeholder = `${varName} 값을 입력하세요`;
+        input.value = currentValues[varName] || '';
+
+        input.addEventListener('input', (e) => {
+            templateVariables[varName] = e.target.value;
+        });
+
+        group.appendChild(label);
+        group.appendChild(input);
+        variableInputsContainer.appendChild(group);
+
+        // 초기값 저장
+        templateVariables[varName] = input.value;
+    });
+}
+
+// 템플릿 변수 치환
+function replaceTemplateVariables(text) {
+    let result = text;
+
+    for (const [varName, value] of Object.entries(templateVariables)) {
+        const regex = new RegExp(`\\$\\{${varName}\\}`, 'g');
+        result = result.replace(regex, value);
+    }
+
+    return result;
+}
+
 // API Key 저장
 saveApiKeyBtn.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
@@ -214,7 +291,7 @@ modelSelect.addEventListener('change', (e) => {
 
 // 프롬프트 전송
 submitBtn.addEventListener('click', async () => {
-    const system = systemPrompt.value.trim();
+    let system = systemPrompt.value.trim();
     const user = userInput.value.trim();
 
     if (!apiKey) {
@@ -230,6 +307,11 @@ submitBtn.addEventListener('click', async () => {
     if (!user) {
         showError('사용자 입력을 입력해주세요.');
         return;
+    }
+
+    // 템플릿 변수 치환
+    if (system) {
+        system = replaceTemplateVariables(system);
     }
 
     // 시스템 프롬프트와 사용자 입력 결합
@@ -328,6 +410,9 @@ copyBtn.addEventListener('click', async () => {
         showError('복사에 실패했습니다: ' + error.message);
     }
 });
+
+// 시스템 프롬프트 입력 시 템플릿 변수 추출
+systemPrompt.addEventListener('input', updateVariableInputs);
 
 // 후처리 옵션 토글
 postprocessHeader.addEventListener('click', () => {

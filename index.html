@@ -28,7 +28,18 @@
         <div class="prompt-section">
             <div class="input-group">
                 <label for="systemPrompt">시스템 프롬프트 (선택):</label>
-                <textarea id="systemPrompt" placeholder="시스템 프롬프트를 입력하세요... (예: 당신은 친절한 AI 어시스턴트입니다.)" rows="3" disabled></textarea>
+                <textarea id="systemPrompt" placeholder="시스템 프롬프트를 입력하세요... 변수는 ${변수명} 형식으로 입력하세요. 예: 당신은 ${childName}의 선생님입니다." rows="3" disabled></textarea>
+            </div>
+
+            <!-- 템플릿 변수 입력 섹션 -->
+            <div id="variablesSection" class="variables-section" style="display: none;">
+                <div class="variables-header">
+                    <h4>📝 템플릿 변수</h4>
+                    <span class="variable-count" id="variableCount">0개</span>
+                </div>
+                <div id="variableInputs" class="variable-inputs">
+                    <!-- 동적으로 생성됨 -->
+                </div>
             </div>
 
             <div class="input-group">
