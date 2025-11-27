@@ -42,6 +42,18 @@ const removeExtraSpacesCheckbox = document.getElementById('removeExtraSpaces');
 const resultDiv = document.getElementById('result');
 const copyBtn = document.getElementById('copyBtn');
 
+// 성능 메트릭
+const performanceMetrics = document.getElementById('performanceMetrics');
+const latencyValue = document.getElementById('latencyValue');
+const inputTokens = document.getElementById('inputTokens');
+const outputTokens = document.getElementById('outputTokens');
+const parsingStatus = document.getElementById('parsingStatus');
+
+// 출력 비교
+const outputComparison = document.getElementById('outputComparison');
+const rawOutput = document.getElementById('rawOutput');
+const processedOutput = document.getElementById('processedOutput');
+
 // 모달
 const errorModal = document.getElementById('errorModal');
 const errorMessage = document.getElementById('errorMessage');
@@ -237,6 +249,26 @@ function replaceVariables(text) {
 // ============================================
 // 후처리 함수
 // ============================================
+function tryParseJSON(text) {
+    try {
+        // 마크다운 코드 블록 제거
+        let cleaned = text.trim();
+
+        // ```json ... ``` 형식 제거
+        cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```$/gm, '');
+        // ``` ... ``` 형식 제거
+        cleaned = cleaned.replace(/^```\s*/, '').replace(/```$/gm, '');
+
+        cleaned = cleaned.trim();
+
+        // JSON 파싱 시도
+        const parsed = JSON.parse(cleaned);
+        return { success: true, data: parsed, cleaned };
+    } catch (e) {
+        return { success: false, error: e.message, text };
+    }
+}
+
 function removeEmojis(text) {
     return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]/gu, '');
 }
@@ -487,6 +519,9 @@ submitBtn.addEventListener('click', async () => {
         console.log(JSON.stringify(requestBody, null, 2));
         console.log('===================');
 
+        // 시간 측정 시작
+        const startTime = performance.now();
+
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
             {
@@ -497,6 +532,10 @@ submitBtn.addEventListener('click', async () => {
                 body: JSON.stringify(requestBody)
             }
         );
+
+        // 시간 측정 종료
+        const endTime = performance.now();
+        const latency = Math.round(endTime - startTime);
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -514,10 +553,56 @@ submitBtn.addEventListener('click', async () => {
             console.log(text);
             console.log('=====================');
 
+            // 토큰 카운트 추출
+            const inputTokenCount = data.usageMetadata?.promptTokenCount || 0;
+            const outputTokenCount = data.usageMetadata?.candidatesTokenCount || 0;
+
+            console.log('=== 성능 메트릭 ===');
+            console.log(`Latency: ${latency}ms`);
+            console.log(`Input Tokens: ${inputTokenCount}`);
+            console.log(`Output Tokens: ${outputTokenCount}`);
+            console.log('==================');
+
+            // 후처리 적용
             const processedText = applyPostProcessing(text);
-            resultDiv.innerHTML = '';
-            resultDiv.textContent = processedText;
-            resultDiv.classList.add('has-content');
+
+            // JSON 파싱 시도
+            const parseResult = tryParseJSON(text);
+
+            console.log('=== JSON 파싱 결과 ===');
+            console.log('Success:', parseResult.success);
+            if (parseResult.success) {
+                console.log('Parsed Data:', parseResult.data);
+            } else {
+                console.log('Error:', parseResult.error);
+            }
+            console.log('====================');
+
+            // 성능 메트릭 표시
+            performanceMetrics.style.display = 'grid';
+            latencyValue.textContent = `${latency}ms`;
+            inputTokens.textContent = inputTokenCount.toLocaleString();
+            outputTokens.textContent = outputTokenCount.toLocaleString();
+
+            if (parseResult.success) {
+                parsingStatus.textContent = '✅ 성공';
+                parsingStatus.classList.remove('error');
+                parsingStatus.classList.add('success');
+            } else {
+                parsingStatus.textContent = '❌ 실패';
+                parsingStatus.classList.remove('success');
+                parsingStatus.classList.add('error');
+            }
+
+            // 출력 비교 표시
+            outputComparison.style.display = 'grid';
+            rawOutput.textContent = text;
+            processedOutput.textContent = parseResult.success
+                ? JSON.stringify(parseResult.data, null, 2)
+                : processedText;
+
+            // 기존 결과 박스 숨기기
+            resultDiv.style.display = 'none';
             copyBtn.style.display = 'inline-block';
         } else {
             throw new Error('응답을 받지 못했습니다.');
@@ -531,6 +616,13 @@ submitBtn.addEventListener('click', async () => {
         }
 
         originalResultText = '';
+
+        // 성능 메트릭 및 출력 비교 숨기기
+        performanceMetrics.style.display = 'none';
+        outputComparison.style.display = 'none';
+
+        // 기존 결과 박스 표시
+        resultDiv.style.display = 'block';
         resultDiv.innerHTML = '<p class="placeholder">오류가 발생했습니다.</p>';
         copyBtn.style.display = 'none';
     } finally {
@@ -554,7 +646,8 @@ userInput.addEventListener('keydown', (e) => {
 // 복사하기
 // ============================================
 copyBtn.addEventListener('click', async () => {
-    const text = resultDiv.textContent;
+    // Processed 출력 복사 (우측 패널)
+    const text = processedOutput.textContent || resultDiv.textContent;
 
     try {
         await navigator.clipboard.writeText(text);

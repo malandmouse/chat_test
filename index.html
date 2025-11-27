@@ -134,6 +134,40 @@
                         📋 복사하기
                     </button>
                 </div>
+
+                <!-- 성능 메트릭 -->
+                <div id="performanceMetrics" class="performance-metrics" style="display: none;">
+                    <div class="metric-card">
+                        <span class="metric-label">⏱️ Latency</span>
+                        <span class="metric-value" id="latencyValue">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">📥 Input Tokens</span>
+                        <span class="metric-value" id="inputTokens">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">📤 Output Tokens</span>
+                        <span class="metric-value" id="outputTokens">-</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">✅ Parsing Status</span>
+                        <span class="metric-value" id="parsingStatus">-</span>
+                    </div>
+                </div>
+
+                <!-- 출력 비교 (Raw vs Processed) -->
+                <div id="outputComparison" class="output-comparison" style="display: none;">
+                    <div class="output-column">
+                        <h4>📄 Raw Output (원본)</h4>
+                        <div id="rawOutput" class="output-box"></div>
+                    </div>
+                    <div class="output-column">
+                        <h4>✨ Processed Output (가공)</h4>
+                        <div id="processedOutput" class="output-box"></div>
+                    </div>
+                </div>
+
+                <!-- 기존 단일 결과 박스 -->
                 <div id="result" class="result-box">
                     <p class="placeholder">여기에 결과가 표시됩니다.</p>
                 </div>

@@ -511,6 +511,77 @@ section {
     color: #1a202c;
 }
 
+/* 성능 메트릭 */
+.performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.metric-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.metric-value.success {
+    color: #48bb78;
+}
+
+.metric-value.error {
+    color: #f56565;
+}
+
+/* 출력 비교 */
+.output-comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.output-column h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2d3748;
+}
+
+.output-box {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #2d3748;
+}
+
 .result-box {
     background: #f7fafc;
     border: 1px solid #e2e8f0;
@@ -671,5 +742,13 @@ section {
 
     .button-group {
         flex-direction: column;
+    }
+
+    .performance-metrics {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .output-comparison {
+        grid-template-columns: 1fr;
     }
 }
