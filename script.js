@@ -597,9 +597,17 @@ submitBtn.addEventListener('click', async () => {
             // 출력 비교 표시
             outputComparison.style.display = 'grid';
             rawOutput.textContent = text;
-            processedOutput.textContent = parseResult.success
-                ? JSON.stringify(parseResult.data, null, 2)
-                : processedText;
+
+            // Processed Output 생성
+            let finalProcessed;
+            if (parseResult.success) {
+                // JSON 파싱 성공 시: stringify 후 후처리 적용
+                finalProcessed = applyPostProcessing(JSON.stringify(parseResult.data, null, 2));
+            } else {
+                // JSON 파싱 실패 시: 기존 후처리 결과 사용
+                finalProcessed = processedText;
+            }
+            processedOutput.textContent = finalProcessed;
 
             // 기존 결과 박스 숨기기
             resultDiv.style.display = 'none';
