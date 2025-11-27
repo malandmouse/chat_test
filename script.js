@@ -80,10 +80,36 @@ function init() {
         modelSelect.value = selectedModel;
     }
 
-    // 기본 예시 변수 추가
-    addVariable('childName', '민수');
-    addVariable('subject', '수학');
-    addVariable('score', '85');
+    // 저장된 변수 로드 또는 기본 예시 변수 추가
+    const loaded = loadVariablesFromStorage();
+    if (loaded && variables.length > 0) {
+        // 저장된 변수들을 UI에 렌더링
+        variables.forEach(({ id, key, value }) => {
+            const item = document.createElement('div');
+            item.className = 'variable-item';
+            item.dataset.id = id;
+
+            item.innerHTML = `
+                <div class="variable-item-header">
+                    <small>변수 #${id + 1}</small>
+                    <button class="btn btn-delete" onclick="removeVariable(${id})">삭제</button>
+                </div>
+                <div class="variable-inputs-pair">
+                    <input type="text" placeholder="Key (예: childName)" value="${key}"
+                           oninput="updateVariableKey(${id}, this.value)">
+                    <input type="text" placeholder="Value (예: 민수)" value="${value}"
+                           oninput="updateVariableValue(${id}, this.value)">
+                </div>
+            `;
+
+            variablesList.appendChild(item);
+        });
+    } else {
+        // 저장된 변수가 없으면 기본 예시 변수 추가
+        addVariable('childName', '민수');
+        addVariable('subject', '수학');
+        addVariable('score', '85');
+    }
 }
 
 // ============================================
@@ -122,6 +148,29 @@ function closeErrorModal() {
 // ============================================
 // 변수 관리
 // ============================================
+function saveVariablesToStorage() {
+    localStorage.setItem('promptVariables', JSON.stringify(variables));
+}
+
+function loadVariablesFromStorage() {
+    const saved = localStorage.getItem('promptVariables');
+    if (saved) {
+        try {
+            const loaded = JSON.parse(saved);
+            variables = loaded;
+            // variableIdCounter 업데이트
+            if (variables.length > 0) {
+                variableIdCounter = Math.max(...variables.map(v => v.id)) + 1;
+            }
+            return true;
+        } catch (e) {
+            console.error('Failed to load variables from storage:', e);
+            return false;
+        }
+    }
+    return false;
+}
+
 function addVariable(key = '', value = '') {
     const id = variableIdCounter++;
     variables.push({ id, key, value });
@@ -144,6 +193,7 @@ function addVariable(key = '', value = '') {
     `;
 
     variablesList.appendChild(item);
+    saveVariablesToStorage();
 }
 
 function removeVariable(id) {
@@ -152,12 +202,14 @@ function removeVariable(id) {
     if (item) {
         item.remove();
     }
+    saveVariablesToStorage();
 }
 
 function updateVariableKey(id, key) {
     const variable = variables.find(v => v.id === id);
     if (variable) {
         variable.key = key;
+        saveVariablesToStorage();
     }
 }
 
@@ -165,6 +217,7 @@ function updateVariableValue(id, value) {
     const variable = variables.find(v => v.id === id);
     if (variable) {
         variable.value = value;
+        saveVariablesToStorage();
     }
 }
 
