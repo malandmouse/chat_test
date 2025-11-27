@@ -7,88 +7,138 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🤖 LLM 프롬프팅 실습</h1>
+    <div class="app-container">
+        <!-- 왼쪽 사이드바 -->
+        <aside class="sidebar">
+            <h1>⚙️ 설정</h1>
 
-        <div class="config-section">
-            <div class="input-group">
-                <label for="apiKey">Google AI Studio API Key:</label>
-                <input type="password" id="apiKey" placeholder="API Key를 입력하세요">
-                <button id="saveApiKey" class="btn btn-primary">저장</button>
-            </div>
-
-            <div class="input-group">
-                <label for="modelSelect">모델 선택:</label>
-                <select id="modelSelect" disabled>
-                    <option value="">API Key를 먼저 입력하세요</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="prompt-section">
-            <div class="input-group">
-                <label for="systemPrompt">시스템 프롬프트 (선택):</label>
-                <textarea id="systemPrompt" placeholder="시스템 프롬프트를 입력하세요... 변수는 ${변수명} 형식으로 입력하세요. 예: 당신은 ${childName}의 선생님입니다." rows="3" disabled></textarea>
-            </div>
-
-            <!-- 템플릿 변수 입력 섹션 -->
-            <div id="variablesSection" class="variables-section" style="display: none;">
-                <div class="variables-header">
-                    <h4>📝 템플릿 변수</h4>
-                    <span class="variable-count" id="variableCount">0개</span>
+            <!-- API 설정 -->
+            <section class="sidebar-section">
+                <h3>🔑 API 설정</h3>
+                <div class="input-group">
+                    <label for="apiKey">API Key:</label>
+                    <input type="password" id="apiKey" placeholder="Google AI Studio API Key">
+                    <button id="saveApiKey" class="btn btn-primary btn-sm">저장</button>
                 </div>
-                <div id="variableInputs" class="variable-inputs">
+                <div class="input-group">
+                    <label for="modelSelect">모델:</label>
+                    <select id="modelSelect" disabled>
+                        <option value="">API Key를 먼저 입력하세요</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- 변수 관리 -->
+            <section class="sidebar-section">
+                <div class="section-header">
+                    <h3>🔤 변수 관리</h3>
+                    <button id="addVariableBtn" class="btn btn-icon" title="변수 추가">+</button>
+                </div>
+                <div id="variablesList" class="variables-list">
                     <!-- 동적으로 생성됨 -->
                 </div>
-            </div>
+                <p class="hint">💡 프롬프트에서 ${변수명} 형식으로 사용</p>
+            </section>
 
-            <div class="input-group">
-                <label for="userInput">사용자 입력:</label>
-                <textarea id="userInput" placeholder="사용자 입력을 입력하세요..." rows="5" disabled></textarea>
-            </div>
+            <!-- 모델 파라미터 -->
+            <section class="sidebar-section">
+                <h3>🎛️ 모델 파라미터</h3>
 
-            <button id="submitBtn" class="btn btn-primary btn-large" disabled>
-                <span id="btnText">전송</span>
-                <span id="btnLoading" class="loading" style="display: none;">처리 중...</span>
-            </button>
-        </div>
+                <div class="param-group">
+                    <label for="temperature">Temperature: <span id="tempValue">0.7</span></label>
+                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                    <small>낮을수록 일관적, 높을수록 창의적</small>
+                </div>
 
-        <div class="postprocess-section">
-            <div class="postprocess-header" id="postprocessHeader">
-                <h3>📝 후처리 옵션</h3>
-                <span class="toggle-icon">▼</span>
-            </div>
-            <div class="postprocess-options" id="postprocessOptions">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="removeEmojis">
-                    <span>이모지 제거</span>
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="removeMarkdown">
-                    <span>마크다운 제거 (**, *, #, -, ` 등)</span>
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="extractCodeBlocks">
-                    <span>코드 블록만 추출</span>
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="removeExtraSpaces">
-                    <span>여러 공백/줄바꿈을 하나로</span>
-                </label>
-            </div>
-        </div>
+                <div class="param-group">
+                    <label for="maxTokens">Max Tokens:</label>
+                    <input type="number" id="maxTokens" value="1000" min="1" max="8000">
+                    <small>최대 응답 길이</small>
+                </div>
 
-        <div class="result-section">
-            <div class="result-header">
-                <h2>결과:</h2>
-                <button id="copyBtn" class="btn btn-copy" style="display: none;">
-                    📋 복사하기
-                </button>
-            </div>
-            <div id="result" class="result-box">
-                <p class="placeholder">여기에 결과가 표시됩니다.</p>
-            </div>
-        </div>
+                <div class="param-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="jsonMode">
+                        <span>JSON 모드</span>
+                    </label>
+                    <small>JSON 형식으로 응답 요청</small>
+                </div>
+            </section>
+        </aside>
+
+        <!-- 오른쪽 메인 영역 -->
+        <main class="main-content">
+            <h1>🤖 LLM 프롬프팅 실습</h1>
+
+            <!-- 프롬프트 입력 -->
+            <section class="prompt-section">
+                <div class="input-group">
+                    <label for="systemPrompt">시스템 프롬프트 (선택):</label>
+                    <textarea id="systemPrompt" placeholder="예: 당신은 ${childName}의 선생님입니다. ${childName}이(가) ${subject} 시험에서 ${score}점을 받았습니다." rows="4" disabled></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label for="userInput">사용자 입력:</label>
+                    <textarea id="userInput" placeholder="사용자 메시지를 입력하세요..." rows="5" disabled></textarea>
+                </div>
+
+                <!-- Preview 섹션 -->
+                <div class="preview-section" id="previewSection" style="display: none;">
+                    <div class="preview-header">
+                        <h4>👁️ 최종 프롬프트 미리보기</h4>
+                        <button id="togglePreview" class="btn btn-sm">닫기</button>
+                    </div>
+                    <pre id="previewContent" class="preview-box"></pre>
+                </div>
+
+                <div class="button-group">
+                    <button id="previewBtn" class="btn btn-secondary" disabled>미리보기</button>
+                    <button id="submitBtn" class="btn btn-primary btn-large" disabled>
+                        <span id="btnText">전송</span>
+                        <span id="btnLoading" class="loading" style="display: none;">처리 중...</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 후처리 옵션 -->
+            <section class="postprocess-section">
+                <div class="postprocess-header" id="postprocessHeader">
+                    <h3>📝 후처리 옵션</h3>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="postprocess-options" id="postprocessOptions">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="removeEmojis">
+                        <span>이모지 제거</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="removeMarkdown">
+                        <span>마크다운 제거</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="extractCodeBlocks">
+                        <span>코드 블록만 추출</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="removeExtraSpaces">
+                        <span>공백/줄바꿈 정리</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- 결과 -->
+            <section class="result-section">
+                <div class="result-header">
+                    <h2>📄 결과</h2>
+                    <button id="copyBtn" class="btn btn-copy" style="display: none;">
+                        📋 복사하기
+                    </button>
+                </div>
+                <div id="result" class="result-box">
+                    <p class="placeholder">여기에 결과가 표시됩니다.</p>
+                </div>
+            </section>
+        </main>
     </div>
 
     <!-- 에러 모달 -->

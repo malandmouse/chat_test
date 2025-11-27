@@ -1,19 +1,35 @@
-// DOM 요소들
+// ============================================
+// DOM 요소
+// ============================================
+// API 설정
 const apiKeyInput = document.getElementById('apiKey');
 const saveApiKeyBtn = document.getElementById('saveApiKey');
 const modelSelect = document.getElementById('modelSelect');
+
+// 변수 관리
+const addVariableBtn = document.getElementById('addVariableBtn');
+const variablesList = document.getElementById('variablesList');
+
+// 모델 파라미터
+const temperatureSlider = document.getElementById('temperature');
+const tempValue = document.getElementById('tempValue');
+const maxTokensInput = document.getElementById('maxTokens');
+const jsonModeCheckbox = document.getElementById('jsonMode');
+
+// 프롬프트 입력
 const systemPrompt = document.getElementById('systemPrompt');
 const userInput = document.getElementById('userInput');
+const previewBtn = document.getElementById('previewBtn');
 const submitBtn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
 const btnLoading = document.getElementById('btnLoading');
-const resultDiv = document.getElementById('result');
-const copyBtn = document.getElementById('copyBtn');
-const errorModal = document.getElementById('errorModal');
-const errorMessage = document.getElementById('errorMessage');
-const closeModal = document.querySelector('.close');
 
-// 후처리 옵션 요소들
+// Preview
+const previewSection = document.getElementById('previewSection');
+const previewContent = document.getElementById('previewContent');
+const togglePreview = document.getElementById('togglePreview');
+
+// 후처리
 const postprocessHeader = document.getElementById('postprocessHeader');
 const postprocessOptions = document.getElementById('postprocessOptions');
 const toggleIcon = postprocessHeader.querySelector('.toggle-icon');
@@ -22,16 +38,23 @@ const removeMarkdownCheckbox = document.getElementById('removeMarkdown');
 const extractCodeBlocksCheckbox = document.getElementById('extractCodeBlocks');
 const removeExtraSpacesCheckbox = document.getElementById('removeExtraSpaces');
 
-// 템플릿 변수 요소들
-const variablesSection = document.getElementById('variablesSection');
-const variableInputsContainer = document.getElementById('variableInputs');
-const variableCount = document.getElementById('variableCount');
+// 결과
+const resultDiv = document.getElementById('result');
+const copyBtn = document.getElementById('copyBtn');
 
+// 모달
+const errorModal = document.getElementById('errorModal');
+const errorMessage = document.getElementById('errorMessage');
+const closeModal = document.querySelector('.close');
+
+// ============================================
 // 상태 관리
+// ============================================
 let apiKey = localStorage.getItem('geminiApiKey') || '';
 let selectedModel = localStorage.getItem('selectedModel') || '';
-let originalResultText = ''; // 원본 결과 저장
-let templateVariables = {}; // 템플릿 변수 값 저장
+let variables = []; // { id, key, value }
+let variableIdCounter = 0;
+let originalResultText = '';
 
 // Gemini API 사용 가능한 모델 목록
 const availableModels = [
@@ -42,22 +65,30 @@ const availableModels = [
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
 ];
 
+// ============================================
 // 초기화
+// ============================================
 function init() {
     if (apiKey) {
         apiKeyInput.value = apiKey;
-        enableModelSelection();
+        enableInputs();
     }
 
-    // 모델 선택 박스 채우기
     populateModelSelect();
 
     if (selectedModel) {
         modelSelect.value = selectedModel;
     }
+
+    // 기본 예시 변수 추가
+    addVariable('childName', '민수');
+    addVariable('subject', '수학');
+    addVariable('score', '85');
 }
 
-// 모델 선택 박스 채우기
+// ============================================
+// 모델 선택
+// ============================================
 function populateModelSelect() {
     modelSelect.innerHTML = '<option value="">모델을 선택하세요</option>';
     availableModels.forEach(model => {
@@ -68,52 +99,106 @@ function populateModelSelect() {
     });
 }
 
-// 모델 선택 활성화
-function enableModelSelection() {
+function enableInputs() {
     modelSelect.disabled = false;
     systemPrompt.disabled = false;
     userInput.disabled = false;
+    previewBtn.disabled = false;
     submitBtn.disabled = false;
 }
 
-// 에러 모달 표시
+// ============================================
+// 에러 처리
+// ============================================
 function showError(message) {
     errorMessage.textContent = message;
     errorModal.style.display = 'block';
 }
 
-// 에러 모달 닫기
 function closeErrorModal() {
     errorModal.style.display = 'none';
 }
 
-// 후처리 함수들
+// ============================================
+// 변수 관리
+// ============================================
+function addVariable(key = '', value = '') {
+    const id = variableIdCounter++;
+    variables.push({ id, key, value });
+
+    const item = document.createElement('div');
+    item.className = 'variable-item';
+    item.dataset.id = id;
+
+    item.innerHTML = `
+        <div class="variable-item-header">
+            <small>변수 #${id + 1}</small>
+            <button class="btn btn-delete" onclick="removeVariable(${id})">삭제</button>
+        </div>
+        <div class="variable-inputs-pair">
+            <input type="text" placeholder="Key (예: childName)" value="${key}"
+                   oninput="updateVariableKey(${id}, this.value)">
+            <input type="text" placeholder="Value (예: 민수)" value="${value}"
+                   oninput="updateVariableValue(${id}, this.value)">
+        </div>
+    `;
+
+    variablesList.appendChild(item);
+}
+
+function removeVariable(id) {
+    variables = variables.filter(v => v.id !== id);
+    const item = variablesList.querySelector(`[data-id="${id}"]`);
+    if (item) {
+        item.remove();
+    }
+}
+
+function updateVariableKey(id, key) {
+    const variable = variables.find(v => v.id === id);
+    if (variable) {
+        variable.key = key;
+    }
+}
+
+function updateVariableValue(id, value) {
+    const variable = variables.find(v => v.id === id);
+    if (variable) {
+        variable.value = value;
+    }
+}
+
+function replaceVariables(text) {
+    let result = text;
+
+    variables.forEach(({ key, value }) => {
+        if (key) {
+            const regex = new RegExp(`\\$\\{${key}\\}`, 'g');
+            result = result.replace(regex, value);
+        }
+    });
+
+    return result;
+}
+
+// ============================================
+// 후처리 함수
+// ============================================
 function removeEmojis(text) {
-    // 이모지 정규식 (대부분의 이모지 매칭)
     return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]/gu, '');
 }
 
 function removeMarkdown(text) {
     return text
-        // 코드 블록 제거 (```...```)
         .replace(/```[\s\S]*?```/g, '')
-        // 인라인 코드 제거 (`...`)
         .replace(/`([^`]+)`/g, '$1')
-        // 굵은 글씨 (**, __)
         .replace(/(\*\*|__)(.*?)\1/g, '$2')
-        // 기울임 (*, _)
         .replace(/(\*|_)(.*?)\1/g, '$2')
-        // 제목 (#, ##, ###)
         .replace(/^#{1,6}\s+/gm, '')
-        // 리스트 (-, *, +)
         .replace(/^[\s]*[-*+]\s+/gm, '')
-        // 링크 [text](url)
         .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-        // 이미지 ![alt](url)
         .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '$1')
-        // 인용 (>)
         .replace(/^>\s+/gm, '')
-        // 수평선 (---, ***)
         .replace(/^[-*_]{3,}$/gm, '');
 }
 
@@ -124,9 +209,7 @@ function extractCodeBlocks(text) {
 
     while ((match = regex.exec(text)) !== null) {
         let code = match[0];
-        // ``` 제거
         code = code.replace(/^```[\w]*\n?/, '').replace(/```$/, '');
-        // ` 제거
         code = code.replace(/^`/, '').replace(/`$/, '');
         codeBlocks.push(code.trim());
     }
@@ -136,15 +219,11 @@ function extractCodeBlocks(text) {
 
 function removeExtraSpaces(text) {
     return text
-        // 여러 공백을 하나로
         .replace(/ +/g, ' ')
-        // 여러 줄바꿈을 하나로
         .replace(/\n{3,}/g, '\n\n')
-        // 줄 앞뒤 공백 제거
         .replace(/^ +| +$/gm, '');
 }
 
-// 후처리 적용
 function applyPostProcessing(text) {
     let processed = text;
 
@@ -167,7 +246,6 @@ function applyPostProcessing(text) {
     return processed;
 }
 
-// 결과 업데이트 (후처리 적용)
 function updateResult() {
     if (!originalResultText) return;
 
@@ -177,78 +255,52 @@ function updateResult() {
     resultDiv.classList.add('has-content');
 }
 
-// 템플릿 변수 추출 함수
-function extractTemplateVariables(text) {
-    const regex = /\$\{(\w+)\}/g;
-    const variables = new Set();
-    let match;
+// ============================================
+// 최종 프롬프트 생성
+// ============================================
+function buildFinalPrompt() {
+    let system = systemPrompt.value.trim();
+    const user = userInput.value.trim();
 
-    while ((match = regex.exec(text)) !== null) {
-        variables.add(match[1]);
+    // 변수 치환
+    if (system) {
+        system = replaceVariables(system);
     }
 
-    return Array.from(variables);
-}
-
-// 템플릿 변수 입력 필드 생성
-function updateVariableInputs() {
-    const promptText = systemPrompt.value;
-    const variables = extractTemplateVariables(promptText);
-
-    if (variables.length === 0) {
-        variablesSection.style.display = 'none';
-        return;
+    // JSON 모드 처리
+    if (jsonModeCheckbox.checked && system) {
+        system += '\n\n반드시 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.';
+    } else if (jsonModeCheckbox.checked && !system) {
+        system = '반드시 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.';
     }
 
-    // 섹션 표시
-    variablesSection.style.display = 'block';
-    variableCount.textContent = `${variables.length}개`;
+    // 시스템 프롬프트와 사용자 입력 결합
+    const fullPrompt = system ? `${system}\n\n${user}` : user;
 
-    // 기존 입력 필드 저장
-    const currentValues = { ...templateVariables };
-
-    // 입력 필드 생성
-    variableInputsContainer.innerHTML = '';
-    variables.forEach(varName => {
-        const group = document.createElement('div');
-        group.className = 'variable-input-group';
-
-        const label = document.createElement('label');
-        label.textContent = `${varName}:`;
-        label.setAttribute('for', `var-${varName}`);
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = `var-${varName}`;
-        input.placeholder = `${varName} 값을 입력하세요`;
-        input.value = currentValues[varName] || '';
-
-        input.addEventListener('input', (e) => {
-            templateVariables[varName] = e.target.value;
-        });
-
-        group.appendChild(label);
-        group.appendChild(input);
-        variableInputsContainer.appendChild(group);
-
-        // 초기값 저장
-        templateVariables[varName] = input.value;
-    });
+    return fullPrompt;
 }
 
-// 템플릿 변수 치환
-function replaceTemplateVariables(text) {
-    let result = text;
+// ============================================
+// Preview 기능
+// ============================================
+function showPreview() {
+    const fullPrompt = buildFinalPrompt();
 
-    for (const [varName, value] of Object.entries(templateVariables)) {
-        const regex = new RegExp(`\\$\\{${varName}\\}`, 'g');
-        result = result.replace(regex, value);
-    }
+    console.log('=== 최종 프롬프트 (Preview) ===');
+    console.log(fullPrompt);
+    console.log('================================');
 
-    return result;
+    previewContent.textContent = fullPrompt;
+    previewSection.style.display = 'block';
 }
 
+function hidePreview() {
+    previewSection.style.display = 'none';
+}
+
+// ============================================
 // API Key 저장
+// ============================================
 saveApiKeyBtn.addEventListener('click', async () => {
     const key = apiKeyInput.value.trim();
 
@@ -257,7 +309,6 @@ saveApiKeyBtn.addEventListener('click', async () => {
         return;
     }
 
-    // API Key 유효성 검사
     try {
         saveApiKeyBtn.disabled = true;
         saveApiKeyBtn.textContent = '확인 중...';
@@ -272,7 +323,7 @@ saveApiKeyBtn.addEventListener('click', async () => {
 
         apiKey = key;
         localStorage.setItem('geminiApiKey', key);
-        enableModelSelection();
+        enableInputs();
 
         showError('✅ API Key가 저장되었습니다!');
     } catch (error) {
@@ -283,15 +334,39 @@ saveApiKeyBtn.addEventListener('click', async () => {
     }
 });
 
-// 모델 선택 변경
+// ============================================
+// 모델 선택
+// ============================================
 modelSelect.addEventListener('change', (e) => {
     selectedModel = e.target.value;
     localStorage.setItem('selectedModel', selectedModel);
 });
 
+// ============================================
+// Temperature 슬라이더
+// ============================================
+temperatureSlider.addEventListener('input', (e) => {
+    tempValue.textContent = e.target.value;
+});
+
+// ============================================
+// Preview 버튼
+// ============================================
+previewBtn.addEventListener('click', () => {
+    if (!userInput.value.trim()) {
+        showError('사용자 입력을 먼저 입력해주세요.');
+        return;
+    }
+
+    showPreview();
+});
+
+togglePreview.addEventListener('click', hidePreview);
+
+// ============================================
 // 프롬프트 전송
+// ============================================
 submitBtn.addEventListener('click', async () => {
-    let system = systemPrompt.value.trim();
     const user = userInput.value.trim();
 
     if (!apiKey) {
@@ -309,22 +384,48 @@ submitBtn.addEventListener('click', async () => {
         return;
     }
 
-    // 템플릿 변수 치환
-    if (system) {
-        system = replaceTemplateVariables(system);
-    }
-
-    // 시스템 프롬프트와 사용자 입력 결합
-    const fullPrompt = system ? `${system}\n\n${user}` : user;
-
     try {
+        // 최종 프롬프트 생성
+        const fullPrompt = buildFinalPrompt();
+
+        // 콘솔에 최종 프롬프트 출력 (디버깅용)
+        console.log('=== 최종 프롬프트 (전송) ===');
+        console.log(fullPrompt);
+        console.log('==========================');
+
+        // 모델 파라미터
+        const temperature = parseFloat(temperatureSlider.value);
+        const maxTokens = parseInt(maxTokensInput.value);
+
+        console.log('=== 모델 파라미터 ===');
+        console.log('Temperature:', temperature);
+        console.log('Max Tokens:', maxTokens);
+        console.log('JSON Mode:', jsonModeCheckbox.checked);
+        console.log('===================');
+
         // UI 상태 변경
         submitBtn.disabled = true;
         btnText.style.display = 'none';
         btnLoading.style.display = 'inline-block';
         resultDiv.innerHTML = '<p class="placeholder">응답을 기다리는 중...</p>';
 
-        // API 호출
+        // API 호출 (Gemini API는 temperature와 maxOutputTokens 지원)
+        const requestBody = {
+            contents: [{
+                parts: [{
+                    text: fullPrompt
+                }]
+            }],
+            generationConfig: {
+                temperature: temperature,
+                maxOutputTokens: maxTokens
+            }
+        };
+
+        console.log('=== API 요청 Body ===');
+        console.log(JSON.stringify(requestBody, null, 2));
+        console.log('===================');
+
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
             {
@@ -332,13 +433,7 @@ submitBtn.addEventListener('click', async () => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: fullPrompt
-                        }]
-                    }]
-                })
+                body: JSON.stringify(requestBody)
             }
         );
 
@@ -352,7 +447,11 @@ submitBtn.addEventListener('click', async () => {
         // 결과 표시
         if (data.candidates && data.candidates.length > 0) {
             const text = data.candidates[0].content.parts[0].text;
-            originalResultText = text; // 원본 저장
+            originalResultText = text;
+
+            console.log('=== API 응답 (원본) ===');
+            console.log(text);
+            console.log('=====================');
 
             const processedText = applyPostProcessing(text);
             resultDiv.innerHTML = '';
@@ -364,25 +463,25 @@ submitBtn.addEventListener('click', async () => {
         }
 
     } catch (error) {
-        // 에러 처리
         if (error.name === 'AbortError') {
             showError('요청이 중단되었습니다.');
         } else {
             showError(`오류 발생: ${error.message}`);
         }
 
-        originalResultText = ''; // 원본 초기화
+        originalResultText = '';
         resultDiv.innerHTML = '<p class="placeholder">오류가 발생했습니다.</p>';
         copyBtn.style.display = 'none';
     } finally {
-        // UI 상태 복구
         submitBtn.disabled = false;
         btnText.style.display = 'inline';
         btnLoading.style.display = 'none';
     }
 });
 
-// Enter 키로 전송 (Shift+Enter는 줄바꿈)
+// ============================================
+// Enter 키로 전송
+// ============================================
 userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -390,14 +489,15 @@ userInput.addEventListener('keydown', (e) => {
     }
 });
 
-// 복사하기 버튼
+// ============================================
+// 복사하기
+// ============================================
 copyBtn.addEventListener('click', async () => {
     const text = resultDiv.textContent;
 
     try {
         await navigator.clipboard.writeText(text);
 
-        // 버튼 텍스트 임시 변경
         const originalText = copyBtn.textContent;
         copyBtn.textContent = '✅ 복사됨!';
         copyBtn.style.background = '#047857';
@@ -411,22 +511,29 @@ copyBtn.addEventListener('click', async () => {
     }
 });
 
-// 시스템 프롬프트 입력 시 템플릿 변수 추출
-systemPrompt.addEventListener('input', updateVariableInputs);
+// ============================================
+// 변수 추가 버튼
+// ============================================
+addVariableBtn.addEventListener('click', () => {
+    addVariable();
+});
 
+// ============================================
 // 후처리 옵션 토글
+// ============================================
 postprocessHeader.addEventListener('click', () => {
     postprocessOptions.classList.toggle('collapsed');
     toggleIcon.classList.toggle('collapsed');
 });
 
-// 후처리 옵션 변경시 결과 업데이트
 removeEmojisCheckbox.addEventListener('change', updateResult);
 removeMarkdownCheckbox.addEventListener('change', updateResult);
 extractCodeBlocksCheckbox.addEventListener('change', updateResult);
 removeExtraSpacesCheckbox.addEventListener('change', updateResult);
 
-// 모달 닫기 이벤트
+// ============================================
+// 모달 닫기
+// ============================================
 closeModal.addEventListener('click', closeErrorModal);
 window.addEventListener('click', (e) => {
     if (e.target === errorModal) {
@@ -434,5 +541,7 @@ window.addEventListener('click', (e) => {
     }
 });
 
+// ============================================
 // 초기화 실행
+// ============================================
 init();
