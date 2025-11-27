@@ -27,8 +27,13 @@
 
         <div class="prompt-section">
             <div class="input-group">
-                <label for="promptInput">프롬프트:</label>
-                <textarea id="promptInput" placeholder="프롬프트를 입력하세요..." rows="5" disabled></textarea>
+                <label for="systemPrompt">시스템 프롬프트 (선택):</label>
+                <textarea id="systemPrompt" placeholder="시스템 프롬프트를 입력하세요... (예: 당신은 친절한 AI 어시스턴트입니다.)" rows="3" disabled></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="userInput">사용자 입력:</label>
+                <textarea id="userInput" placeholder="사용자 입력을 입력하세요..." rows="5" disabled></textarea>
             </div>
 
             <button id="submitBtn" class="btn btn-primary btn-large" disabled>

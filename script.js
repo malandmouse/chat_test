@@ -2,7 +2,8 @@
 const apiKeyInput = document.getElementById('apiKey');
 const saveApiKeyBtn = document.getElementById('saveApiKey');
 const modelSelect = document.getElementById('modelSelect');
-const promptInput = document.getElementById('promptInput');
+const systemPrompt = document.getElementById('systemPrompt');
+const userInput = document.getElementById('userInput');
 const submitBtn = document.getElementById('submitBtn');
 const btnText = document.getElementById('btnText');
 const btnLoading = document.getElementById('btnLoading');
@@ -54,7 +55,8 @@ function populateModelSelect() {
 // 모델 선택 활성화
 function enableModelSelection() {
     modelSelect.disabled = false;
-    promptInput.disabled = false;
+    systemPrompt.disabled = false;
+    userInput.disabled = false;
     submitBtn.disabled = false;
 }
 
@@ -112,7 +114,8 @@ modelSelect.addEventListener('change', (e) => {
 
 // 프롬프트 전송
 submitBtn.addEventListener('click', async () => {
-    const prompt = promptInput.value.trim();
+    const system = systemPrompt.value.trim();
+    const user = userInput.value.trim();
 
     if (!apiKey) {
         showError('먼저 API Key를 입력하고 저장해주세요.');
@@ -124,10 +127,13 @@ submitBtn.addEventListener('click', async () => {
         return;
     }
 
-    if (!prompt) {
-        showError('프롬프트를 입력해주세요.');
+    if (!user) {
+        showError('사용자 입력을 입력해주세요.');
         return;
     }
+
+    // 시스템 프롬프트와 사용자 입력 결합
+    const fullPrompt = system ? `${system}\n\n${user}` : user;
 
     try {
         // UI 상태 변경
@@ -147,7 +153,7 @@ submitBtn.addEventListener('click', async () => {
                 body: JSON.stringify({
                     contents: [{
                         parts: [{
-                            text: prompt
+                            text: fullPrompt
                         }]
                     }]
                 })
@@ -191,7 +197,7 @@ submitBtn.addEventListener('click', async () => {
 });
 
 // Enter 키로 전송 (Shift+Enter는 줄바꿈)
-promptInput.addEventListener('keydown', (e) => {
+userInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         submitBtn.click();
