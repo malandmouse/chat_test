@@ -13,9 +13,19 @@ const errorModal = document.getElementById('errorModal');
 const errorMessage = document.getElementById('errorMessage');
 const closeModal = document.querySelector('.close');
 
+// 후처리 옵션 요소들
+const postprocessHeader = document.getElementById('postprocessHeader');
+const postprocessOptions = document.getElementById('postprocessOptions');
+const toggleIcon = postprocessHeader.querySelector('.toggle-icon');
+const removeEmojisCheckbox = document.getElementById('removeEmojis');
+const removeMarkdownCheckbox = document.getElementById('removeMarkdown');
+const extractCodeBlocksCheckbox = document.getElementById('extractCodeBlocks');
+const removeExtraSpacesCheckbox = document.getElementById('removeExtraSpaces');
+
 // 상태 관리
 let apiKey = localStorage.getItem('geminiApiKey') || '';
 let selectedModel = localStorage.getItem('selectedModel') || '';
+let originalResultText = ''; // 원본 결과 저장
 
 // Gemini API 사용 가능한 모델 목록
 const availableModels = [
@@ -69,6 +79,96 @@ function showError(message) {
 // 에러 모달 닫기
 function closeErrorModal() {
     errorModal.style.display = 'none';
+}
+
+// 후처리 함수들
+function removeEmojis(text) {
+    // 이모지 정규식 (대부분의 이모지 매칭)
+    return text.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]/gu, '');
+}
+
+function removeMarkdown(text) {
+    return text
+        // 코드 블록 제거 (```...```)
+        .replace(/```[\s\S]*?```/g, '')
+        // 인라인 코드 제거 (`...`)
+        .replace(/`([^`]+)`/g, '$1')
+        // 굵은 글씨 (**, __)
+        .replace(/(\*\*|__)(.*?)\1/g, '$2')
+        // 기울임 (*, _)
+        .replace(/(\*|_)(.*?)\1/g, '$2')
+        // 제목 (#, ##, ###)
+        .replace(/^#{1,6}\s+/gm, '')
+        // 리스트 (-, *, +)
+        .replace(/^[\s]*[-*+]\s+/gm, '')
+        // 링크 [text](url)
+        .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+        // 이미지 ![alt](url)
+        .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '$1')
+        // 인용 (>)
+        .replace(/^>\s+/gm, '')
+        // 수평선 (---, ***)
+        .replace(/^[-*_]{3,}$/gm, '');
+}
+
+function extractCodeBlocks(text) {
+    const codeBlocks = [];
+    const regex = /```[\s\S]*?```|`[^`]+`/g;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+        let code = match[0];
+        // ``` 제거
+        code = code.replace(/^```[\w]*\n?/, '').replace(/```$/, '');
+        // ` 제거
+        code = code.replace(/^`/, '').replace(/`$/, '');
+        codeBlocks.push(code.trim());
+    }
+
+    return codeBlocks.length > 0 ? codeBlocks.join('\n\n---\n\n') : text;
+}
+
+function removeExtraSpaces(text) {
+    return text
+        // 여러 공백을 하나로
+        .replace(/ +/g, ' ')
+        // 여러 줄바꿈을 하나로
+        .replace(/\n{3,}/g, '\n\n')
+        // 줄 앞뒤 공백 제거
+        .replace(/^ +| +$/gm, '');
+}
+
+// 후처리 적용
+function applyPostProcessing(text) {
+    let processed = text;
+
+    if (extractCodeBlocksCheckbox.checked) {
+        processed = extractCodeBlocks(processed);
+    }
+
+    if (removeMarkdownCheckbox.checked) {
+        processed = removeMarkdown(processed);
+    }
+
+    if (removeEmojisCheckbox.checked) {
+        processed = removeEmojis(processed);
+    }
+
+    if (removeExtraSpacesCheckbox.checked) {
+        processed = removeExtraSpaces(processed);
+    }
+
+    return processed;
+}
+
+// 결과 업데이트 (후처리 적용)
+function updateResult() {
+    if (!originalResultText) return;
+
+    const processedText = applyPostProcessing(originalResultText);
+    resultDiv.innerHTML = '';
+    resultDiv.textContent = processedText;
+    resultDiv.classList.add('has-content');
 }
 
 // API Key 저장
@@ -170,8 +270,11 @@ submitBtn.addEventListener('click', async () => {
         // 결과 표시
         if (data.candidates && data.candidates.length > 0) {
             const text = data.candidates[0].content.parts[0].text;
+            originalResultText = text; // 원본 저장
+
+            const processedText = applyPostProcessing(text);
             resultDiv.innerHTML = '';
-            resultDiv.textContent = text;
+            resultDiv.textContent = processedText;
             resultDiv.classList.add('has-content');
             copyBtn.style.display = 'inline-block';
         } else {
@@ -186,6 +289,7 @@ submitBtn.addEventListener('click', async () => {
             showError(`오류 발생: ${error.message}`);
         }
 
+        originalResultText = ''; // 원본 초기화
         resultDiv.innerHTML = '<p class="placeholder">오류가 발생했습니다.</p>';
         copyBtn.style.display = 'none';
     } finally {
@@ -224,6 +328,18 @@ copyBtn.addEventListener('click', async () => {
         showError('복사에 실패했습니다: ' + error.message);
     }
 });
+
+// 후처리 옵션 토글
+postprocessHeader.addEventListener('click', () => {
+    postprocessOptions.classList.toggle('collapsed');
+    toggleIcon.classList.toggle('collapsed');
+});
+
+// 후처리 옵션 변경시 결과 업데이트
+removeEmojisCheckbox.addEventListener('change', updateResult);
+removeMarkdownCheckbox.addEventListener('change', updateResult);
+extractCodeBlocksCheckbox.addEventListener('change', updateResult);
+removeExtraSpacesCheckbox.addEventListener('change', updateResult);
 
 // 모달 닫기 이벤트
 closeModal.addEventListener('click', closeErrorModal);
