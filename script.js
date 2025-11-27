@@ -268,16 +268,23 @@ function buildFinalPrompt() {
     }
 
     // JSON 모드 처리
-    if (jsonModeCheckbox.checked && system) {
-        system += '\n\n반드시 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.';
-    } else if (jsonModeCheckbox.checked && !system) {
-        system = '반드시 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.';
+    if (jsonModeCheckbox.checked) {
+        const jsonInstruction = '반드시 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.';
+        if (system) {
+            system += '\n\n' + jsonInstruction;
+        } else {
+            system = jsonInstruction;
+        }
     }
 
-    // 시스템 프롬프트와 사용자 입력 결합
-    const fullPrompt = system ? `${system}\n\n${user}` : user;
-
-    return fullPrompt;
+    // 프롬프트 결합
+    if (system && user) {
+        return `${system}\n\n${user}`;
+    } else if (system) {
+        return system;
+    } else {
+        return user;
+    }
 }
 
 // ============================================
@@ -353,8 +360,8 @@ temperatureSlider.addEventListener('input', (e) => {
 // Preview 버튼
 // ============================================
 previewBtn.addEventListener('click', () => {
-    if (!userInput.value.trim()) {
-        showError('사용자 입력을 먼저 입력해주세요.');
+    if (!systemPrompt.value.trim() && !userInput.value.trim()) {
+        showError('프롬프트 또는 추가 입력을 먼저 입력해주세요.');
         return;
     }
 
@@ -367,6 +374,7 @@ togglePreview.addEventListener('click', hidePreview);
 // 프롬프트 전송
 // ============================================
 submitBtn.addEventListener('click', async () => {
+    const system = systemPrompt.value.trim();
     const user = userInput.value.trim();
 
     if (!apiKey) {
@@ -379,8 +387,8 @@ submitBtn.addEventListener('click', async () => {
         return;
     }
 
-    if (!user) {
-        showError('사용자 입력을 입력해주세요.');
+    if (!system && !user) {
+        showError('프롬프트 또는 추가 입력을 입력해주세요.');
         return;
     }
 
