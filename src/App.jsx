@@ -67,7 +67,10 @@ const DEFAULT_SYSTEM_PROMPT = `# Role
 }`
 
 function App() {
-  const [apiKey, setApiKey] = useState('')
+  const [apiProvider, setApiProvider] = useState('gemini')
+  const [openaiApiKey, setOpenaiApiKey] = useState('')
+  const [geminiApiKey, setGeminiApiKey] = useState('')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash-exp')
   const [dataObject, setDataObject] = useState(JSON.stringify(DEFAULT_DATA, null, 2))
   const [conversionTemplate, setConversionTemplate] = useState(DEFAULT_CONVERSION_TEMPLATE)
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
@@ -76,20 +79,35 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // Load API key from localStorage
+  // Load API keys and provider from localStorage
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('openai_api_key')
-    if (savedApiKey) {
-      setApiKey(savedApiKey)
-    }
+    const savedProvider = localStorage.getItem('api_provider')
+    const savedOpenaiKey = localStorage.getItem('openai_api_key')
+    const savedGeminiKey = localStorage.getItem('gemini_api_key')
+    const savedModel = localStorage.getItem('selected_model')
+
+    if (savedProvider) setApiProvider(savedProvider)
+    if (savedOpenaiKey) setOpenaiApiKey(savedOpenaiKey)
+    if (savedGeminiKey) setGeminiApiKey(savedGeminiKey)
+    if (savedModel) setSelectedModel(savedModel)
   }, [])
 
-  // Save API key to localStorage
+  // Save API keys and provider to localStorage
   useEffect(() => {
-    if (apiKey) {
-      localStorage.setItem('openai_api_key', apiKey)
-    }
-  }, [apiKey])
+    if (apiProvider) localStorage.setItem('api_provider', apiProvider)
+  }, [apiProvider])
+
+  useEffect(() => {
+    if (openaiApiKey) localStorage.setItem('openai_api_key', openaiApiKey)
+  }, [openaiApiKey])
+
+  useEffect(() => {
+    if (geminiApiKey) localStorage.setItem('gemini_api_key', geminiApiKey)
+  }, [geminiApiKey])
+
+  useEffect(() => {
+    if (selectedModel) localStorage.setItem('selected_model', selectedModel)
+  }, [selectedModel])
 
   // Generate final prompt in real-time
   useEffect(() => {
@@ -124,8 +142,10 @@ function App() {
   }, [dataObject, conversionTemplate, systemPrompt])
 
   const handleGenerate = async () => {
-    if (!apiKey) {
-      setError('OpenAI API Key를 먼저 입력해주세요.')
+    // Validate API key based on provider
+    const currentApiKey = apiProvider === 'openai' ? openaiApiKey : geminiApiKey
+    if (!currentApiKey) {
+      setError(`${apiProvider === 'openai' ? 'OpenAI' : 'Gemini'} API Key를 먼저 입력해주세요.`)
       return
     }
 
@@ -133,32 +153,88 @@ function App() {
     setError(null)
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'user',
-              content: finalPrompt
-            }
-          ],
-          temperature: 0.7,
-          response_format: { type: "json_object" }
+      let response, data
+
+      if (apiProvider === 'openai') {
+        // OpenAI API
+        response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentApiKey}`
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              {
+                role: 'user',
+                content: finalPrompt
+              }
+            ],
+            temperature: 0.7,
+            response_format: { type: "json_object" }
+          })
         })
-      })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || `API Error: ${response.status}`)
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error?.message || `API Error: ${response.status}`)
+        }
+
+        data = await response.json()
+        setApiResponse(data)
+
+      } else {
+        // Gemini API
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${currentApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: finalPrompt
+                }]
+              }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 8192
+              }
+            })
+          }
+        )
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error?.message || `API Error: ${response.status}`)
+        }
+
+        data = await response.json()
+
+        // Convert Gemini response to OpenAI-like format for consistency
+        const geminiText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const convertedResponse = {
+          id: 'gemini-' + Date.now(),
+          model: selectedModel,
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: geminiText
+            },
+            finish_reason: 'stop'
+          }],
+          usage: {
+            prompt_tokens: data.usageMetadata?.promptTokenCount || 0,
+            completion_tokens: data.usageMetadata?.candidatesTokenCount || 0,
+            total_tokens: data.usageMetadata?.totalTokenCount || 0
+          },
+          _raw_gemini: data
+        }
+        setApiResponse(convertedResponse)
       }
-
-      const data = await response.json()
-      setApiResponse(data)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -182,8 +258,14 @@ function App() {
       <main className="max-w-[1800px] mx-auto px-6 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <LeftPanel
-            apiKey={apiKey}
-            setApiKey={setApiKey}
+            apiProvider={apiProvider}
+            setApiProvider={setApiProvider}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={setGeminiApiKey}
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
             dataObject={dataObject}
             setDataObject={setDataObject}
             conversionTemplate={conversionTemplate}
