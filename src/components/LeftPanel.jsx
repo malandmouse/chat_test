@@ -9,7 +9,7 @@ const OPENAI_MODELS = [
 ]
 
 const GEMINI_MODELS = [
-  { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Experimental)' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
   { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
   { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B' },
   { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' }
@@ -40,7 +40,7 @@ function LeftPanel({
     if (provider === 'openai') {
       setSelectedModel('gpt-4o-mini')
     } else {
-      setSelectedModel('gemini-2.0-flash-exp')
+      setSelectedModel('gemini-2.0-flash')
     }
   }
 

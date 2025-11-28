@@ -70,7 +70,7 @@ function App() {
   const [apiProvider, setApiProvider] = useState('gemini')
   const [openaiApiKey, setOpenaiApiKey] = useState('')
   const [geminiApiKey, setGeminiApiKey] = useState('')
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash-exp')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash')
   const [dataObject, setDataObject] = useState(JSON.stringify(DEFAULT_DATA, null, 2))
   const [conversionTemplate, setConversionTemplate] = useState(DEFAULT_CONVERSION_TEMPLATE)
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
