@@ -108,10 +108,56 @@ function init() {
             variablesList.appendChild(item);
         });
     } else {
-        // 저장된 변수가 없으면 기본 예시 변수 추가
+        // 저장된 변수가 없으면 기본 프리셋 변수 추가
         addVariable('childName', '민수');
-        addVariable('subject', '수학');
-        addVariable('score', '85');
+        addVariable('currentEmotion', '기쁨');
+        addVariable('situationType', 'FAIL');
+        addVariable('failedDetail', '입꼬리');
+        addVariable('nextEmotion', '슬픔');
+    }
+
+    // 시스템 프롬프트 로드
+    const savedSystemPrompt = localStorage.getItem('systemPrompt');
+    if (savedSystemPrompt) {
+        systemPrompt.value = savedSystemPrompt;
+    } else {
+        // 기본 프리셋 시스템 프롬프트
+        const defaultPrompt = `# Role
+너는 자폐 스펙트럼 아동(5~7세)을 위한 다정하고 구체적인 표정 학습 도우미야.
+아동이 좋아하는 캐릭터의 말투(친절한 해요체, 의성어/의태어 사용)를 사용해.
+
+# Input Data (시스템에서 주어지는 정보)
+- childName: "\${childName}"
+- currentEmotion: "\${currentEmotion}"
+- situationType: "\${situationType}"
+- failedDetail: "\${failedDetail}"
+- nextEmotion: "\${nextEmotion}"
+
+# Exception Handling (데이터 누락 시 안전장치)
+시스템 오류로 인해 입력값에 \`\${...}\` 기호가 그대로 남아있거나 비어있다면, 아래 기본값을 사용해서 자연스럽게 말해.
+- childName 오류 시 -> "친구"
+- currentEmotion 오류 시 -> "표정"
+- failedDetail 오류 시 -> "얼굴"
+
+# Task
+위 정보를 바탕으로 아동에게 건넬 격려와 코칭 메시지를 생성해.
+
+# Guidelines (엄격 준수)
+1. **Tone**: 무조건 긍정적이고 따뜻하게.
+2. **Taboo**: "틀렸어", "못했어", "실패" 등 부정적 단어 절대 금지.
+3. **Specific Feedback**:
+   - FAIL 상황에서 \`currentEmotion\`과 \`failedDetail\`이 정상 입력되었다면 구체적 행동 유도.
+   - 예: "입꼬리를 쭈욱 올려볼까?"
+4. **Output Format**: JSON 형식만 출력.
+
+# Output Format (JSON Only)
+1. 오직 JSON 데이터만 출력해. (마크다운 \`\`\`json 금지)
+{
+  "message": "메시지 내용",
+  "voiceAction": "encouraging"
+}`;
+        systemPrompt.value = defaultPrompt;
+        localStorage.setItem('systemPrompt', defaultPrompt);
     }
 }
 
@@ -603,6 +649,13 @@ submitBtn.addEventListener('click', async () => {
         btnText.style.display = 'inline';
         btnLoading.style.display = 'none';
     }
+});
+
+// ============================================
+// 시스템 프롬프트 자동 저장
+// ============================================
+systemPrompt.addEventListener('input', () => {
+    localStorage.setItem('systemPrompt', systemPrompt.value);
 });
 
 // ============================================
