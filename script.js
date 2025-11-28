@@ -29,15 +29,6 @@ const previewSection = document.getElementById('previewSection');
 const previewContent = document.getElementById('previewContent');
 const togglePreview = document.getElementById('togglePreview');
 
-// 후처리
-const postprocessHeader = document.getElementById('postprocessHeader');
-const postprocessOptions = document.getElementById('postprocessOptions');
-const toggleIcon = postprocessHeader.querySelector('.toggle-icon');
-const removeEmojisCheckbox = document.getElementById('removeEmojis');
-const removeMarkdownCheckbox = document.getElementById('removeMarkdown');
-const extractCodeBlocksCheckbox = document.getElementById('extractCodeBlocks');
-const removeExtraSpacesCheckbox = document.getElementById('removeExtraSpaces');
-
 // 결과
 const resultDiv = document.getElementById('result');
 const copyBtn = document.getElementById('copyBtn');
@@ -310,34 +301,8 @@ function removeExtraSpaces(text) {
 }
 
 function applyPostProcessing(text) {
-    let processed = text;
-
-    if (extractCodeBlocksCheckbox.checked) {
-        processed = extractCodeBlocks(processed);
-    }
-
-    if (removeMarkdownCheckbox.checked) {
-        processed = removeMarkdown(processed);
-    }
-
-    if (removeEmojisCheckbox.checked) {
-        processed = removeEmojis(processed);
-    }
-
-    if (removeExtraSpacesCheckbox.checked) {
-        processed = removeExtraSpaces(processed);
-    }
-
-    return processed;
-}
-
-function updateResult() {
-    if (!originalResultText) return;
-
-    const processedText = applyPostProcessing(originalResultText);
-    resultDiv.innerHTML = '';
-    resultDiv.textContent = processedText;
-    resultDiv.classList.add('has-content');
+    // 항상 이모지만 제거
+    return removeEmojis(text);
 }
 
 // ============================================
@@ -679,19 +644,6 @@ copyBtn.addEventListener('click', async () => {
 addVariableBtn.addEventListener('click', () => {
     addVariable();
 });
-
-// ============================================
-// 후처리 옵션 토글
-// ============================================
-postprocessHeader.addEventListener('click', () => {
-    postprocessOptions.classList.toggle('collapsed');
-    toggleIcon.classList.toggle('collapsed');
-});
-
-removeEmojisCheckbox.addEventListener('change', updateResult);
-removeMarkdownCheckbox.addEventListener('change', updateResult);
-extractCodeBlocksCheckbox.addEventListener('change', updateResult);
-removeExtraSpacesCheckbox.addEventListener('change', updateResult);
 
 // ============================================
 // 모달 닫기
